@@ -1,8 +1,6 @@
 import time
 from typing import List
 
-PAGE_SIZE = 1000
-
 
 class tuple:
     _index = -1
@@ -34,13 +32,15 @@ class page:
 
 class table:
     _pages: List[page] = []
+    _page_size = 0
 
-    def __init__(self, words: List[str]) -> None:
+    def __init__(self, words: List[str], page_size: int) -> None:
+        self._page_size = page_size
         tuples = []
 
         for i, word in enumerate(words):
             tuples.append(tuple(i, word))
-            if len(tuples) == PAGE_SIZE:
+            if len(tuples) == page_size:
                 self._pages.append(page(tuples))
                 tuples = []
 
@@ -54,34 +54,33 @@ class table:
         return len(self._pages)
 
     def __len__(self) -> int:
-        return len(self._pages) * PAGE_SIZE
+        return len(self._pages) * self._page_size
 
 
-BUCKET_SIZE = 100
-
-
-def hash_function(value, table) -> int:
+def hash_function(value, table, bucket_size) -> int:
     return sum([(ord(c) - ord("a")) * (i + 1) for i, c in enumerate(value)]) % (
-        len(table) // BUCKET_SIZE + 1
+        (len(table) // bucket_size) + 1
     )
 
 
 class bucket:
     _words: List[str] = []
     _pages: List[int] = []
+    _bucket_size = 0
 
     _next = None
 
-    def __init__(self) -> None:
+    def __init__(self, bucket_size) -> None:
         self._words = []
         self._pages = []
         self._next = None
+        self._bucket_size = bucket_size
 
     def add(self, word: str, page: int) -> List[bool]:
         had_collision, had_overflow = False, False
-        if len(self._words) == BUCKET_SIZE:
+        if len(self._words) == self._bucket_size:
             if self._next == None:
-                self._next = bucket()
+                self._next = bucket(self._bucket_size)
                 had_overflow = True
             self._next.add(word, page)
             had_collision = True
@@ -100,17 +99,21 @@ class bucket:
 
 class hash_table:
     _buckets: List[bucket] = []
+    _bucket_size = 0
     _table = None
     _collisions = 0
     _overflows = 0
 
-    def __init__(self, table: table) -> None:
-        self._buckets = [bucket() for _ in range(len(table) // BUCKET_SIZE + 1)]
+    def __init__(self, table: table, bucket_size) -> None:
+        self._buckets = [
+            bucket(bucket_size) for _ in range((len(table) // bucket_size) + 1)
+        ]
         self._table = table
+        self._bucket_size = bucket_size
 
         for page_index, page in enumerate(table._pages):
             for tuple in page.get_page():
-                index = hash_function(tuple.get_value(), table)
+                index = hash_function(tuple.get_value(), table, bucket_size)
                 [had_collision, had_overflow] = self._buckets[index].add(
                     tuple.get_value(), page_index
                 )
@@ -123,7 +126,7 @@ class hash_table:
     def get_word_page(self, word: str):
         if self._table is None:
             return -1
-        index = hash_function(word, self._table)
+        index = hash_function(word, self._table, self._bucket_size)
         return self._buckets[index].get_page(word)
 
     def get_word_tuple(self, word: str):

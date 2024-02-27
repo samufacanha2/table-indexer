@@ -22,8 +22,8 @@ def find_word(word: str, page_size: int, bucket_size: int):
     word_list = [word.strip() for word in word_list]
     word_list = [word for word in word_list if len(word) > 0]
 
-    table_instance = table(word_list)
-    hash_table_instance = hash_table(table_instance)
+    table_instance = table(word_list, page_size)
+    hash_table_instance = hash_table(table_instance, bucket_size)
 
     [result, time, memory_access_count] = table_scan_word(table_instance, word)
     if result is None:
