@@ -61,8 +61,17 @@ class WordSearchGUI:
 
         self.result_area.insert(
             tk.END,
-            f"Table and Hash Table structures have been generated with page size {page_size} and bucket size {bucket_size}\n",
+            f"Table and Hash Table structures have been generated.\n",
         )
+        self.result_area.insert(
+            tk.END,
+            f"Page Size: {page_size} - Page Count: {self.table_instance.get_pages_count()}\n",
+        )
+        self.result_area.insert(
+            tk.END,
+            f"Bucket Size: {bucket_size} - Bucket Count: {self.hash_table_instance.get_bucket_count()}\n",
+        )
+        self.result_area.insert(tk.END, f"{'-'*20}\n")
         self.result_area.insert(
             tk.END, f"Collisions: {self.hash_table_instance.get_collisions()}\n"
         )

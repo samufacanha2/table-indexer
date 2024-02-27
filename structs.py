@@ -150,3 +150,6 @@ class hash_table:
 
     def get_overflows(self) -> int:
         return self._overflows
+
+    def get_bucket_count(self) -> int:
+        return len(self._buckets)
