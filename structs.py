@@ -121,7 +121,6 @@ class hash_table:
                     self._collisions += 1
                 if had_overflow:
                     self._overflows += 1
-        print(f"{self._collisions} collisions, {self._overflows} overflows")
 
     def get_word_page(self, word: str):
         if self._table is None:
@@ -145,3 +144,9 @@ class hash_table:
                 return [tuple, time.time() - start_time, memory_access_count]
 
         return [None, time.time() - start_time, memory_access_count]
+
+    def get_collisions(self) -> int:
+        return self._collisions
+
+    def get_overflows(self) -> int:
+        return self._overflows
