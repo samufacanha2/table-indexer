@@ -19,19 +19,42 @@ class tuple:
         return self._index
 
 
+class page:
+    _tuples: List[tuple] = []
+
+    def __init__(self, tuples: List[tuple]) -> None:
+        self._tuples = tuples
+
+    def get_tuple(self, index: int) -> tuple:
+        return self._tuples[index]
+
+    def get_page(self) -> List[tuple]:
+        return self._tuples
+
+
 class table:
-    _pages: List[List[tuple]] = []
+    _pages: List[page] = []
 
     def __init__(self, words: List[str]) -> None:
         tuples = []
+
         for i, word in enumerate(words):
             tuples.append(tuple(i, word))
-        self._pages = [
-            tuples[i : i + PAGE_SIZE] for i in range(0, len(tuples), PAGE_SIZE)
-        ]
+            if len(tuples) == PAGE_SIZE:
+                self._pages.append(page(tuples))
+                tuples = []
 
-    def get_page_items(self, page: int) -> List[tuple]:
-        return self._pages[page]
+        if len(tuples) > 0:
+            self._pages.append(page(tuples))
+
+    def get_page(self, page: int) -> List[tuple]:
+        return self._pages[page].get_page()
+
+    def get_pages_count(self) -> int:
+        return len(self._pages)
+
+    def __len__(self) -> int:
+        return len(self._pages) * PAGE_SIZE
 
 
 BUCKET_SIZE = 100
@@ -39,68 +62,83 @@ BUCKET_SIZE = 100
 
 def hash_function(value, table) -> int:
     return sum([(ord(c) - ord("a")) * (i + 1) for i, c in enumerate(value)]) % (
-        BUCKET_SIZE * len(table._pages) * PAGE_SIZE
+        len(table) // BUCKET_SIZE + 1
     )
 
 
 class bucket:
-    _hashes_and_refs = []  # [[hash1, [ref1,ref2]], [hash2, [ref3]], ...]
+    _words: List[str] = []
+    _pages: List[int] = []
+
+    _next = None
 
     def __init__(self) -> None:
-        self._hashes_and_refs = []
+        self._words = []
+        self._pages = []
+        self._next = None
 
-    def add_ref_to_hash(
-        self, hash: int, ref: int
-    ) -> bool:  # return true if there is a collision
-        for hash_and_ref in self._hashes_and_refs:
-            if hash_and_ref[0] == hash:
-                hash_and_ref[1].append(ref)
-                return True
-        if len(self._hashes_and_refs) < BUCKET_SIZE:
-            self._hashes_and_refs.append([hash, [ref]])
-        return False
+    def add(self, word: str, page: int) -> List[bool]:
+        had_collision, had_overflow = False, False
+        if len(self._words) == BUCKET_SIZE:
+            if self._next == None:
+                self._next = bucket()
+                had_overflow = True
+            self._next.add(word, page)
+            had_collision = True
+            return [had_collision, had_overflow]
+        self._words.append(word)
+        self._pages.append(page)
+        return [had_collision, had_overflow]
 
-    def is_full(self) -> bool:
-        return len(self._hashes_and_refs) == BUCKET_SIZE
-
-    def get_refs(self, hash: int) -> List[int]:
-        for hash_and_ref in self._hashes_and_refs:
-            if hash_and_ref[0] == hash:
-                return hash_and_ref[1]
-        return []
+    def get_page(self, word: str) -> int:
+        if word in self._words:
+            return self._pages[self._words.index(word)]
+        if self._next != None:
+            return self._next.get_page(word)
+        return -1
 
 
-class indexed_table:
-    _buckets = []
+class hash_table:
+    _buckets: List[bucket] = []
+    _table = None
     _collisions = 0
-    _table = table([])
+    _overflows = 0
 
     def __init__(self, table: table) -> None:
-        buckets = [
-            bucket() for _ in range(len(table._pages) * PAGE_SIZE // BUCKET_SIZE + 1)
-        ]
-        print(len(buckets))
-        for page in table._pages:
-            for tuple in page:
-                hash = hash_function(tuple.get_value(), table)
-                collides = buckets[hash].add_ref_to_hash(hash, tuple.get_index())
-                if collides:
-                    self._collisions += 1
-        self._buckets = buckets
+        self._buckets = [bucket() for _ in range(len(table) // BUCKET_SIZE + 1)]
         self._table = table
-        # print(self._collisions)
-        # print(buckets[99]._hashes_and_refs)
 
-    def find_word(self, word: str):
+        for page_index, page in enumerate(table._pages):
+            for tuple in page.get_page():
+                index = hash_function(tuple.get_value(), table)
+                [had_collision, had_overflow] = self._buckets[index].add(
+                    tuple.get_value(), page_index
+                )
+                if had_collision:
+                    self._collisions += 1
+                if had_overflow:
+                    self._overflows += 1
+        print(f"{self._collisions} collisions, {self._overflows} overflows")
+
+    def get_word_page(self, word: str):
+        if self._table is None:
+            return -1
+        index = hash_function(word, self._table)
+        return self._buckets[index].get_page(word)
+
+    def get_word_tuple(self, word: str):
+        memory_access_count = 0
         start_time = time.time()
-        hash = hash_function(word, self._table)
-        refs = self._buckets[hash].get_refs(hash)
-        for ref in refs:
-            if (
-                self._table.get_page_items(ref // PAGE_SIZE)[
-                    ref % PAGE_SIZE
-                ].get_value()
-                == word
-            ):
-                return [ref, time.time() - start_time]
-        return [None, time.time() - start_time]
+        page = self.get_word_page(word)
+        if page == -1:
+            return [None, time.time() - start_time, memory_access_count]
+
+        if self._table is None:
+            return [None, time.time() - start_time, memory_access_count]
+
+        memory_access_count += 1
+        for tuple in self._table.get_page(page):
+            if tuple.get_value() == word:
+                return [tuple, time.time() - start_time, memory_access_count]
+
+        return [None, time.time() - start_time, memory_access_count]
