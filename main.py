@@ -28,7 +28,7 @@ class WordSearchGUI:
 
         self.entry_bucket_size = tk.Entry(master)
         self.entry_bucket_size.pack()
-        self.entry_bucket_size.insert(0, "100")  # Default value for bucket_size
+        self.entry_bucket_size.insert(0, "905")  # Default value for bucket_size
 
         self.generate_table_button = tk.Button(
             master,
@@ -48,6 +48,7 @@ class WordSearchGUI:
         self.hash_table_instance = None
 
     def generate_table_structures(self):
+        self.result_area.delete("1.0", tk.END)
         page_size = int(self.entry_page_size.get())
         bucket_size = int(self.entry_bucket_size.get())
 
@@ -73,10 +74,12 @@ class WordSearchGUI:
         )
         self.result_area.insert(tk.END, f"{'-'*20}\n")
         self.result_area.insert(
-            tk.END, f"Collisions: {self.hash_table_instance.get_collisions()}\n"
+            tk.END,
+            f"Collisions: {self.hash_table_instance.get_collisions()} ({self.hash_table_instance.get_collisions()*100/ len(self.table_instance):.5f}%)\n",
         )
         self.result_area.insert(
-            tk.END, f"Overflows: {self.hash_table_instance.get_overflows()}\n"
+            tk.END,
+            f"Overflows: {self.hash_table_instance.get_overflows()} ({(self.hash_table_instance.get_overflows() * 100)/ self.hash_table_instance.get_bucket_count():.5f}%)",
         )
         self.search_button["state"] = (
             "normal"  # Enable the search button after structures are generated

@@ -1,4 +1,5 @@
 import time
+import math
 from typing import List
 
 
@@ -36,6 +37,8 @@ class table:
 
     def __init__(self, words: List[str], page_size: int) -> None:
         self._page_size = page_size
+        self._pages = []
+
         tuples = []
 
         for i, word in enumerate(words):
@@ -58,8 +61,14 @@ class table:
 
 
 def hash_function(value, table, bucket_size) -> int:
-    return sum([(ord(c) - ord("a")) * (i + 1) for i, c in enumerate(value)]) % (
-        (len(table) // bucket_size) + 1
+    return math.floor(
+        sum(
+            [
+                (ord(c) - ord("a")) * ((i + 1) * math.e) ** 31
+                for i, c in enumerate(value)
+            ]
+        )
+        % ((len(table) // bucket_size) + 1)
     )
 
 
@@ -82,8 +91,8 @@ class bucket:
             if self._next == None:
                 self._next = bucket(self._bucket_size)
                 had_overflow = True
-            self._next.add(word, page)
             had_collision = True
+            self._next.add(word, page)
             return [had_collision, had_overflow]
         self._words.append(word)
         self._pages.append(page)
@@ -105,16 +114,18 @@ class hash_table:
     _overflows = 0
 
     def __init__(self, table: table, bucket_size) -> None:
-        self._buckets = [
-            bucket(bucket_size) for _ in range((len(table) // bucket_size) + 1)
-        ]
+        self._buckets = []
+        buckets = [bucket(bucket_size) for _ in range((len(table) // bucket_size) + 1)]
+        self._buckets = buckets
         self._table = table
         self._bucket_size = bucket_size
+        self._collisions = 0
+        self._overflows = 0
 
         for page_index, page in enumerate(table._pages):
             for tuple in page.get_page():
                 index = hash_function(tuple.get_value(), table, bucket_size)
-                [had_collision, had_overflow] = self._buckets[index].add(
+                [had_collision, had_overflow] = buckets[index].add(
                     tuple.get_value(), page_index
                 )
                 if had_collision:
