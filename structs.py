@@ -64,7 +64,7 @@ def hash_function(value, table, bucket_size) -> int:
     return math.floor(
         sum(
             [
-                (ord(c) - ord("a")) * ((i + 1) * math.e) ** 31
+                (ord(c) - ord("0")) * ((i + 1) * math.e) ** 31
                 for i, c in enumerate(value)
             ]
         )
@@ -89,10 +89,12 @@ class bucket:
         had_collision, had_overflow = False, False
         if len(self._words) == self._bucket_size:
             if self._next == None:
-                self._next = bucket(self._bucket_size)
                 had_overflow = True
+                self._next = bucket(self._bucket_size)
+                self._next.add(word, page)
+                return [had_collision, had_overflow]
+            _, had_overflow = self._next.add(word, page)
             had_collision = True
-            self._next.add(word, page)
             return [had_collision, had_overflow]
         self._words.append(word)
         self._pages.append(page)

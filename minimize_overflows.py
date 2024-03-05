@@ -13,8 +13,11 @@ def compute_best_bucket_size(range_start, range_end, word_list, page_size):
         hash_table_instance = hash_table(table(word_list, page_size), i)
         current_overflows = hash_table_instance.get_overflows()
         if current_overflows < overflows:
-            overflows = current_overflows
+            overflows = (
+                current_overflows * 100
+            ) / hash_table_instance.get_bucket_count()  # overflow percentage
             bucket_size = i
+            print(f"new best in thread: {overflows}")
     return bucket_size, overflows
 
 
@@ -55,6 +58,8 @@ if __name__ == "__main__":
     word_list = [word.strip() for word in word_list]
     word_list = [word for word in word_list if len(word) > 0]
 
-    best_bucket_size, min_overflows = parallel_compute_best_bucket(word_list, page_size)
+    best_bucket_size, min_overflows = parallel_compute_best_bucket(
+        word_list, page_size, 20
+    )
     print(f"Best bucket size: {best_bucket_size} - Overflows: {min_overflows}")
-    # Best bucket size: 913 - Overflows: 1 (minimizing overflows)
+    # Best bucket size: 51 - Overflows: 44 (minimizing overflows)
